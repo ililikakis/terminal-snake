@@ -9,6 +9,7 @@
 #include <ncurses.h>
 #include <list>
 #include <vector>
+#include <iostream>
 
 #include "settings.h"
 
@@ -67,8 +68,8 @@ init_arena()
     lucorner[0] = center[0] - (HEIGHT/2);
     lucorner[1] = center[1] - WIDTH;
     
-    memcpy(infos,
-           "Name:                    Level:       Length:       "
+    memcpy(infos,// 32 46
+           "Name:                    Level: 1     Length: 2     "
            , WIDTH*2*sizeof(char));
            
     memcpy(arena,
@@ -168,6 +169,29 @@ update_scr()
 }
 
 void
+update_info(int lev, int len)
+{
+    length += len;
+    level += lev;
+    int index;
+    std::string l =  std::to_string(level);    
+    index = 32;
+    for (char i : l)
+    {
+        infos[index] = i;
+        index += 1;
+    }
+    
+    l = std::to_string(length);
+    index = 46;
+    for (char i : l)
+    {
+        infos[index] = i;
+        index += 1;
+    }
+    
+}
+void
 move_head()
 {
     //current head direction
@@ -178,9 +202,9 @@ move_head()
         if (arena[head[0]-1][head[1]] == 'f' )
         {
             digestion.push_front(length);
-            length+=1;
             place_food();
-            if (length % 3 == 0) {level+=1;}
+            if (length % 3 == 0) {update_info(1,1); }
+            else { update_info(0,1); }
         }else if (arena[head[0]-1][head[1]] != ' ')
         {
             game_over();
@@ -192,9 +216,9 @@ move_head()
         if (arena[head[0]][head[1]+1] == 'f')
         {
             digestion.push_front(length);
-            length+=1;
             place_food();
-            if (length % 3 == 0) {level+=1;}
+            if (length % 3 == 0) {update_info(1,1); }
+            else { update_info(0,1); }
         }else if (arena[head[0]][head[1]+1] != ' ')
         {
             game_over();
@@ -206,9 +230,9 @@ move_head()
         if (arena[head[0]+1][head[1]] == 'f')
         {
             digestion.push_front(length);
-            length+=1;
             place_food();
-            if (level % 3 == 0) {level+=1;}
+            if (length % 3 == 0) {update_info(1,1); }
+            else { update_info(0,1); }
         }else if (arena[head[0]+1][head[1]] != ' ')
         {
             game_over();
@@ -220,9 +244,9 @@ move_head()
         if (arena[head[0]][head[1]-1] == 'f')
         {
             digestion.push_front(length);
-            length+=1;
             place_food();
-            if (length % 3 == 0) {level+=1;}
+            if (length % 3 == 0) {update_info(1,1); }
+            else { update_info(0,1); }
         }else if (arena[head[0]][head[1]-1] != ' ')
         {
             game_over();
