@@ -43,7 +43,7 @@ char tmp_c;
 
 int  lucorner[2]; // global
 char arena[HEIGHT][WIDTH];
-char infos[HEIGHT][WIDTH];
+char infos[WIDTH*2];
 
 
 int dead   = 0;
@@ -68,27 +68,8 @@ init_arena()
     lucorner[1] = center[1] - WIDTH;
     
     memcpy(infos,
-           "++++++++++++++++++++++++++"
-           "++                        "
-           "++                        "
-           "++  Name:                 "
-           "++                        "
-           "++  Level:                "
-           "++  Length:               "
-           "++                        "
-           "++                        "
-           "++                        "
-           "++                        "
-           "++                        "
-           "++                        "
-           "++                        "
-           "++                        "
-           "++                        "
-           "++                        "
-           "++                        "
-           "++                        "
-           "++++++++++++++++++++++++++",
-           HEIGHT*WIDTH*sizeof(char));
+           "Name:                    Level:       Length:       "
+           , WIDTH*2*sizeof(char));
            
     memcpy(arena,
            "++++++++++++++++++++++++++"
@@ -152,23 +133,12 @@ update_scr()
 {
     clear();
     //infos
-    for (int i = 0; i < HEIGHT; i++)
+    attron(COLOR_PAIR(SCRIPT_PAIR));
+    for (int i = 0; i < WIDTH*2; i++)
     {
-        for (int j = 0; j < WIDTH; j++)
-        {
-            if (infos[i][j] == '+')
-            {       
-                attron(COLOR_PAIR(BORDER_PAIR));
-                mvprintw(lucorner[0]+i, lucorner[1]-WIDTH+j, "%c", infos[i][j]);
-                attroff(COLOR_PAIR(BORDER_PAIR));
-            }else if (infos[i][j] != ' ')
-            { 
-                attron(COLOR_PAIR(SCRIPT_PAIR));
-                mvprintw(lucorner[0]+i, lucorner[1]-WIDTH+j, "%c", infos[i][j]);
-                attroff(COLOR_PAIR(SCRIPT_PAIR));
-            }         
-        }
+        mvprintw(lucorner[0]-2, lucorner[1]+i, "%c", infos[i]);
     }
+    attroff(COLOR_PAIR(SCRIPT_PAIR));
     //arena
     for (int i = 0; i < HEIGHT; i++)
     {
