@@ -13,44 +13,37 @@
 
 #include "settings.h"
 
+/* size of arena, do NOT touch */
 #define WIDTH 26
 #define HEIGHT 20
 
+/* Speed of Snake */
 #define DELAY 7777
-#define MOVEINTERVAL (DELAY/1000) * ((300 - level*13)/5)
-//delay is the delay between two commands, here to avoid raping processor
+#define MOVEINTERVAL (DELAY/1000) * ( (300 - level*13) /5)
 
-/*
- * A_NORMAL        Normal display (no highlight)
- * A_STANDOUT      Best highlighting mode of the terminal.
- * A_UNDERLINE     Underlining
- * A_REVERSE       Reverse video
- * A_BLINK         Blinking
- * A_DIM           Half bright
- * A_BOLD          Extra bright or bold
- * A_PROTECT       Protected mode
- * A_INVIS         Invisible or blank mode
- * A_ALTCHARSET    Alternate character set
- * A_CHARTEXT      Bit-mask to extract a character
- * COLOR_PAIR(n)   Color-pair number n 
+/* left upper corner of SnakeArena 
+ * coordinate is related to terminal
  */
-
-int head[2]; // local variables
-int tail[2];
-int food[2];
-
-int  tmp_xy[2];  // temp tail
-char tmp_c;
-
 int  lucorner[2]; // global
 char arena[HEIGHT][WIDTH];
 char infos[WIDTH*2];
 
+/* coordinates are related to lucorner[] */
+int head[2];
+int tail[2];
+int food[2];
+
+int  tmp_xy[2];  // buffer tail position
+char tmp_c;      // buffer tail or head direction
 
 int dead   = 0;
-int level  = 1;
+int level  = 5;
 int length = 2;
 
+/* List of food that passes through the snake. 
+ * Value of the element, corresponding to position in
+ * the List. Value is zero if position is equal to tail.
+ */
 std::list<int> digestion;
 
 struct timeval t1, t2;
@@ -61,14 +54,15 @@ init_arena()
     int center[2];
     //calculate center Point of window
     getmaxyx(stdscr,center[0],center[1]);
-
     center[0] = center[0]/2;
     center[1] = center[1]/2;
 
     lucorner[0] = center[0] - (HEIGHT/2);
     lucorner[1] = center[1] - WIDTH;
     
-    memcpy(infos,// 32 46
+    /* LevelIndex 32 
+     * LengthIndex 46 */
+    memcpy(infos,
            "Name:                    Level: 1     Length: 2     "
            , WIDTH*2*sizeof(char));
            
@@ -101,15 +95,18 @@ init_arena()
     tail[0] = HEIGHT/2; 
     tail[1] = WIDTH/2-1;
  
-    arena[head[0]][head[1]] = 'o';
-    arena[tail[0]][tail[1]] = 'o';
+    arena[head[0]][head[1]] = 'e';
+    arena[tail[0]][tail[1]] = 'e';
 
 }
 
+/* If the snake is long enough, the method could become 
+ * problematic due to too many recursions.
+ * Alternative idea is needed!!
+ */
 void
 place_food()
 {
-
     food[0] = (rand() % (HEIGHT-2)) + 1;
     food[1] = (rand() % (WIDTH -2)) + 1;
 
@@ -133,34 +130,40 @@ void
 update_scr()
 {
     clear();
-    //infos
+    // print information of player, level and length
     attron(COLOR_PAIR(SCRIPT_PAIR));
     for (int i = 0; i < WIDTH*2; i++)
     {
         mvprintw(lucorner[0]-2, lucorner[1]+i, "%c", infos[i]);
     }
     attroff(COLOR_PAIR(SCRIPT_PAIR));
-    //arena
+    //print arena and stuff inside
     for (int i = 0; i < HEIGHT; i++)
     {
         for (int j = 0; j < WIDTH; j++)
         {  
             if (arena[i][j] == '+')
             {
+                // Border
                 attron(COLOR_PAIR(BORDER_PAIR));
-                mvprintw(lucorner[0]+i, lucorner[1]+2*j, "%c%c", arena[i][j], arena[i][j]);
+                mvprintw(lucorner[0]+i, lucorner[1]+2*j, 
+                         "%c%c", arena[i][j], arena[i][j]);
                 attroff(COLOR_PAIR(BORDER_PAIR));
             }else if ( arena[i][j] == 'n' || 
-                       arena[i][j] == 'o' ||
+                       arena[i][j] == 'e' ||
                        arena[i][j] == 's' ||
                        arena[i][j] == 'w' )
             {
-                attron(COLOR_PAIR(SNAKE_PAIR));
-                mvprintw(lucorner[0]+i, lucorner[1]+2*j, "%c%c", arena[i][j], arena[i][j]);
-                attroff(COLOR_PAIR(SNAKE_PAIR));
+                // Snake
+                attron(COLOR_PAIR(1));
+                mvprintw(lucorner[0]+i, lucorner[1]+2*j,
+                         "%c%c", arena[i][j], arena[i][j]);
+                attroff(COLOR_PAIR(1));
             }else if ( arena[i][j] == 'f' ){
+                // Food
                 attron(COLOR_PAIR(FOOD_PAIR));
-                mvprintw(lucorner[0]+i, lucorner[1]+2*j, "%c%c", arena[i][j], arena[i][j]);
+                mvprintw(lucorner[0]+i, lucorner[1]+2*j,
+                         "%c%c", arena[i][j], arena[i][j]);
                 attroff(COLOR_PAIR(FOOD_PAIR));
             }          
         }
@@ -168,6 +171,7 @@ update_scr()
     refresh();
 }
 
+/* update length and level */
 void
 update_info(int lev, int len)
 {
@@ -191,11 +195,19 @@ update_info(int lev, int len)
     }
     
 }
+
+/* Move possition of head and write direction 
+ * in corresponding field of arena.
+ */
 void
 move_head()
 {
-    //current head direction
+    /* Store current head direction to 
+     * write it into the coming field. */
     tmp_c = arena[head[0]][head[1]];
+    /* If target field has food 'f', eat it and move afterwards.
+     * If target field has neither food nor is empty, end game.
+     * Else field has to be empty. */
     switch (tmp_c)
     {
     case 'n':
@@ -203,14 +215,11 @@ move_head()
         {
             digestion.push_front(length);
             place_food();
-        }else if (arena[head[0]-1][head[1]] != ' ')
-        {
-            game_over();
-            return;
         }
+        
         head[0]-=1;
         break;
-    case 'o':
+    case 'e':
         if (arena[head[0]][head[1]+1] == 'f')
         {
             digestion.push_front(length);
@@ -249,21 +258,25 @@ move_head()
     default:
         break;
     }
-    
     arena[head[0]][head[1]] = tmp_c;
-
 }
 
+/* Move possition of tail and clear
+ * corresponding field of arena with ' '.
+ */
 void
 move_tail()
 {
-    memcpy(tmp_xy, tail, 2*sizeof(int));  
+    /* Store coordinate to clear coresponding field 
+     * in arena after moving. */
+    memcpy(tmp_xy, tail, 2*sizeof(int));
+
     switch (arena[tail[0]][tail[1]])
     {
     case 'n':
         tail[0]-=1;
         break;
-    case 'o':
+    case 'e':
         tail[1]+=1;
         break;
     case 's':
@@ -274,37 +287,45 @@ move_tail()
     default:
         break;
     }
+    /* clear field */
     arena[tmp_xy[0]][tmp_xy[1]] = ' ';
 }
 
+/* Update the direction of the head 
+ * according to the input.
+ */
 void
 update_head(char ch)
 {
+    /* ch       desired direction
+     * tmp_c    current direction
+     */
     tmp_c = arena[head[0]][head[1]];
+    /* if current direction is opposite of desired, do nothing */
     switch (ch)
     {
     case UP:
         if ( tmp_c != 's' )
         {
-            arena[head[0]][head[1]]   = 'n';
+            arena[head[0]][head[1]] = 'n';
         } 
         break;
     case RIGHT:
         if ( tmp_c != 'w' )
         {
-            arena[head[0]][head[1]]   = 'o';
+            arena[head[0]][head[1]] = 'e';
         }
         break;
     case DOWN:
         if ( tmp_c != 'n' )
         {
-            arena[head[0]][head[1]]   = 's';
+            arena[head[0]][head[1]] = 's';
         }
         break;
     case LEFT:
-        if ( tmp_c != 'o' )
+        if ( tmp_c != 'e' )
         {
-            arena[head[0]][head[1]]   = 'w';
+            arena[head[0]][head[1]] = 'w';
         }
         break;
     default:
@@ -315,19 +336,23 @@ update_head(char ch)
 void
 game()
 {
+    char ch;
     srand(time(NULL));
     init_arena();
     place_food();
     update_scr();
+    cbreak();
+    nodelay(stdscr, TRUE);
     gettimeofday(&t1, NULL);
-    while(!dead)
-    { 
-
-        nodelay(stdscr, true);
-        update_head(getch());
+    while(!dead && !usleep(DELAY))
+    {
+        ch = getch();
+        update_head(ch);
+        //noecho();
 
         gettimeofday(&t2, NULL);
-        if( (((t2.tv_sec-t1.tv_sec) * 1000) + ((t2.tv_usec-t1.tv_usec)/1000)) > MOVEINTERVAL)
+        if( (((t2.tv_sec-t1.tv_sec) * 1000) + ((t2.tv_usec-t1.tv_usec)/1000)) 
+            > MOVEINTERVAL)
         {
             if (!digestion.empty())
             {
@@ -366,6 +391,16 @@ int main(int argc, char const *argv[])
     start_color();
     curs_set(0); // hide cursor 
 
+    /*
+     * COLOR_BLACK
+     * COLOR_RED
+     * COLOR_GREEN
+     * COLOR_YELLOW
+     * COLOR_BLUE
+     * COLOR_MAGENTA
+     * COLOR_CYAN
+     * COLOR_WHITE
+     */
     init_pair(SCRIPT_PAIR, COLOR_RED, COLOR_BLACK);
     init_pair(SNAKE_PAIR, COLOR_MAGENTA, COLOR_MAGENTA);
     init_pair(BORDER_PAIR, COLOR_BLUE, COLOR_BLUE);
