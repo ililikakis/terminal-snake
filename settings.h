@@ -1,9 +1,7 @@
-
-#define UP    'w'
-#define DOWN  's'
-#define LEFT  'a'
-#define RIGHT 'd'
-
+#define UP    'w' // direction is north 'n'
+#define DOWN  's' // direction is south 's'
+#define LEFT  'a' // direction is west  'w'
+#define RIGHT 'd' // direction is east  'e'
 
 /*
  * COLOR_BLACK
